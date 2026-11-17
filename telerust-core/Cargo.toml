@@ -7,6 +7,7 @@ edition = "2024"
 grammers-client = { workspace = true }
 grammers-session = { workspace = true }
 grammers-mtsender = { workspace = true }
+grammers-tl-types = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 anyhow = { workspace = true }

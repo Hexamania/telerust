@@ -5,7 +5,7 @@ use clap::{Parser, Subcommand};
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 
-use telerust_core::{config::AppConfig, TelegramClient, HighLevelClient, TelegramClientConfig, Chat, Message, User, LoginToken};
+use telerust_core::{config::AppConfig, TelegramClient, HighLevelClient, TelegramClientConfig, Chat, ChatType, Message, User, LoginToken};
 
 #[derive(Parser)]
 #[command(name = "telerust")]
@@ -15,7 +15,7 @@ struct Cli {
     command: Commands,
 
     /// Set log level
-    #[arg(short, long, global = true, default_value = "info")]
+    #[arg(short = 'L', long, global = true, default_value = "info")]
     log_level: String,
 }
 
@@ -154,7 +154,13 @@ async fn list_dialogs(high_level: &HighLevelClient, limit: usize) -> Result<()> 
 
     println!("Your dialogs ({} total):", dialogs.len());
     for (i, dialog) in dialogs.iter().take(limit).enumerate() {
-        let chat_type = if dialog.is_channel { "Channel" } else if dialog.is_group { "Group" } else { "Private" };
+        let chat_type = match dialog.chat_type {
+            ChatType::Channel => "Channel",
+            ChatType::Supergroup => "Supergroup",
+            ChatType::Group => "Group",
+            ChatType::Community => "Community",
+            ChatType::Private => "Private",
+        };
         let username = dialog.username.as_deref().unwrap_or("none");
         println!("  {}. {} [{}] (@{}) - ID: {}",
             i + 1, dialog.title, chat_type, username, dialog.id);

@@ -14,7 +14,7 @@ pub struct AppConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TelegramConfig {
-    pub api_id: i32,
+    pub api_id: i64,
     pub api_hash: String,
     pub phone_number: Option<String>,
 }
@@ -40,7 +40,7 @@ impl AppConfig {
 
         // Set defaults
         builder = builder
-            .set_default("telegram.api_id", 0)?
+            .set_default("telegram.api_id", 0i64)?
             .set_default("telegram.api_hash", "")?
             .set_default("telegram.phone_number", "")?
             .set_default("app.log_level", "info")?

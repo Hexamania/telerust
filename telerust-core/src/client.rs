@@ -2,12 +2,37 @@
 
 use anyhow::Result;
 use grammers_client::{update::Update, peer::Peer, client::LoginToken};
-use grammers_session::types::{PeerId};
+use grammers_session::{Session, types::{PeerId, PeerKind}};
+use grammers_session::storages::SqliteSession;
+use grammers_tl_types as tl;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{info};
 
 use super::{Chat as AppChat, Message as AppMessage, TelegramClient, types::User as AppUser};
+
+/// Convert PeerId to InputPeer for API calls using session to get access_hash
+async fn peer_id_to_input_peer(session: &Arc<SqliteSession>, peer_id: PeerId) -> Result<tl::enums::InputPeer> {
+    // Get PeerInfo from session to retrieve access_hash
+    let peer_info = session.peer(peer_id).await?
+        .ok_or_else(|| anyhow::anyhow!("Peer not found in session: {}", peer_id.bot_api_dialog_id_unchecked()))?;
+
+    let access_hash = peer_info.auth().map(|a| a.hash()); // PeerAuth has hash() method
+
+    match peer_id.kind() {
+        PeerKind::User => Ok(tl::enums::InputPeer::User(tl::types::InputPeerUser {
+            user_id: peer_id.bare_id_unchecked(),
+            access_hash: access_hash.ok_or_else(|| anyhow::anyhow!("Missing access_hash for user"))?,
+        })),
+        PeerKind::Chat => Ok(tl::enums::InputPeer::Chat(tl::types::InputPeerChat {
+            chat_id: peer_id.bare_id_unchecked(),
+        })),
+        PeerKind::Channel => Ok(tl::enums::InputPeer::Channel(tl::types::InputPeerChannel {
+            channel_id: peer_id.bare_id_unchecked(),
+            access_hash: access_hash.ok_or_else(|| anyhow::anyhow!("Missing access_hash for channel"))?,
+        })),
+    }
+}
 
 /// High-level client with convenient methods
 pub struct HighLevelClient {
@@ -29,51 +54,72 @@ impl HighLevelClient {
 
         let mut iter = client.client().iter_dialogs();
 
-        while let Ok(Some(dialog)) = iter.next().await {
-            let chat = dialog.peer().clone();
-            dialogs.push(chat.into());
+        // Handle errors gracefully - don't stop iteration on first error
+        loop {
+            match iter.next().await {
+                Ok(Some(dialog)) => {
+                    let chat = dialog.peer().clone();
+                    dialogs.push(chat.into());
+                }
+                Ok(None) => break, // End of iteration
+                Err(e) => {
+                    tracing::warn!("Error fetching dialog, continuing: {}", e);
+                    // Continue to next dialog instead of stopping
+                }
+            }
         }
 
         Ok(dialogs)
     }
 
-    /// Get messages from a chat
+    /// Get messages from a chat (using bare ID - deprecated, use get_messages_by_full_id)
     pub async fn get_messages(&self, chat_id: i64, limit: usize) -> Result<Vec<AppMessage>> {
         let client = self.inner.lock().await;
         let mut messages = Vec::new();
 
-        // Convert i64 to PeerId and then to PeerRef
-        let peer_ref = PeerId::user(chat_id)
+        // Try to reconstruct PeerId from bare ID - this is ambiguous without type info
+        // Try as user first, then chat, then channel
+        let peer_id = PeerId::user(chat_id)
             .or_else(|| PeerId::chat(chat_id))
             .or_else(|| PeerId::channel(chat_id))
-            .map(|id| id.to_ambient_ref())
             .ok_or_else(|| anyhow::anyhow!("Invalid peer ID: {}", chat_id))?;
+        let peer_ref = peer_id.to_ambient_ref();
 
         let mut iter = client.client().iter_messages(peer_ref);
         let mut count = 0;
 
-        while let Ok(Some(m)) = iter.next().await {
-            if count >= limit {
-                break;
+        // Handle errors gracefully
+        loop {
+            match iter.next().await {
+                Ok(Some(m)) => {
+                    if count >= limit {
+                        break;
+                    }
+                    messages.push(m.into());
+                    count += 1;
+                }
+                Ok(None) => break, // End of iteration
+                Err(e) => {
+                    tracing::warn!("Error fetching message, continuing: {}", e);
+                    // Continue to next message instead of stopping
+                }
             }
-            messages.push(m.into());
-            count += 1;
         }
 
         Ok(messages)
     }
 
-    /// Send a message
+    /// Send a message (using bare ID - deprecated, use send_message_by_full_id)
     pub async fn send_message(&self, chat_id: i64, text: &str) -> Result<AppMessage> {
         let client = self.inner.lock().await;
-        // Convert i64 to PeerId and then to PeerRef
-        let peer_ref = PeerId::user(chat_id)
+
+        let peer_id = PeerId::user(chat_id)
             .or_else(|| PeerId::chat(chat_id))
             .or_else(|| PeerId::channel(chat_id))
-            .map(|id| id.to_ambient_ref())
             .ok_or_else(|| anyhow::anyhow!("Invalid peer ID: {}", chat_id))?;
+        let peer_ref = peer_id.to_ambient_ref();
 
-        let sent = client.client().send_message(peer_ref, text).await?;
+        let sent: grammers_client::message::Message = client.client().send_message(peer_ref, text).await?;
         Ok(sent.into())
     }
 
@@ -97,6 +143,55 @@ impl HighLevelClient {
             }
             None => Ok(None),
         }
+    }
+
+    /// Get messages from a chat using full peer ID (bot_api_dialog_id)
+    pub async fn get_messages_by_full_id(&self, full_peer_id: i64, limit: usize) -> Result<Vec<AppMessage>> {
+        let mut client = self.inner.lock().await;
+        let mut messages = Vec::new();
+
+        // Reconstruct PeerId from the stored bot_api_dialog_id, then convert to InputPeer
+        // using the session to get the access_hash
+        let peer_id = PeerId::from_bot_api_dialog_id(full_peer_id)
+            .ok_or_else(|| anyhow::anyhow!("Invalid peer ID: {}", full_peer_id))?;
+
+        let session = client.session().clone();
+        let input_peer = peer_id_to_input_peer(&session, peer_id).await?;
+
+        let mut iter = client.client().iter_messages(input_peer);
+        let mut count = 0;
+
+        loop {
+            match iter.next().await {
+                Ok(Some(m)) => {
+                    if count >= limit {
+                        break;
+                    }
+                    messages.push(m.into());
+                    count += 1;
+                }
+                Ok(None) => break,
+                Err(e) => {
+                    tracing::warn!("Error fetching message, continuing: {}", e);
+                }
+            }
+        }
+
+        Ok(messages)
+    }
+
+    /// Send a message using full peer ID (bot_api_dialog_id)
+    pub async fn send_message_by_full_id(&self, full_peer_id: i64, text: &str) -> Result<AppMessage> {
+        let mut client = self.inner.lock().await;
+
+        let peer_id = PeerId::from_bot_api_dialog_id(full_peer_id)
+            .ok_or_else(|| anyhow::anyhow!("Invalid peer ID: {}", full_peer_id))?;
+
+        let session = client.session().clone();
+        let input_peer = peer_id_to_input_peer(&session, peer_id).await?;
+
+        let sent: grammers_client::message::Message = client.client().send_message(input_peer, text).await?;
+        Ok(sent.into())
     }
 
     /// Request login code

@@ -21,7 +21,7 @@ pub use self::client::HighLevelClient;
 /// Configuration for creating a TelegramClient
 #[derive(Debug, Clone)]
 pub struct TelegramClientConfig {
-    pub api_id: i32,
+    pub api_id: i64,
     pub api_hash: String,
     pub session_file: PathBuf,
     pub download_dir: PathBuf,
@@ -34,19 +34,25 @@ pub struct TelegramClient {
     pool_runner: Option<tokio::task::JoinHandle<()>>,
     updates_stream: Option<UpdateStream>,
     config: TelegramClientConfig,
+    #[allow(dead_code)]
     session: Arc<SqliteSession>,
 }
 
 impl TelegramClient {
     /// Create a new Telegram client and connect
     pub async fn new(config: TelegramClientConfig) -> Result<Self> {
+        // Ensure session directory exists
+        if let Some(parent) = config.session_file.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
         let session = Arc::new(SqliteSession::open(&config.session_file).await?);
 
         let SenderPool {
             runner,
             handle,
             updates,
-        } = SenderPool::new(Arc::clone(&session), config.api_id);
+        } = SenderPool::new(Arc::clone(&session), config.api_id as i32);
 
         let client = Client::new(handle.clone());
         let pool_runner = Some(tokio::spawn(runner.run()));
@@ -69,6 +75,11 @@ impl TelegramClient {
     /// Get the underlying grammers client
     pub fn client(&self) -> &Client {
         &self.client
+    }
+
+    /// Get the session
+    pub fn session(&self) -> &Arc<SqliteSession> {
+        &self.session
     }
 
     /// Check if the client is authorized

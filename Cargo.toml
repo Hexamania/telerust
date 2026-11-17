@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "telerust-core",
     "telerust-cli",
+    "telerust-gui",
 ]
 exclude = []
 
@@ -10,6 +11,7 @@ exclude = []
 grammers-client = { version = "0.12", features = ["fs"] }
 grammers-session = "0.12"
 grammers-mtsender = "0.12"
+grammers-tl-types = "0.12"
 tokio = { version = "1.40", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
