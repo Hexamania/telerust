@@ -4,9 +4,6 @@
   "version": "0.1.0",
   "identifier": "com.telerust.app",
   "build": {
-    "beforeDevCommand": "npx serve ../frontend -p 1420",
-    "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "",
     "frontendDist": "../frontend"
   },
   "app": {
