@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>telerust</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #181a1f;
+            --bg-secondary: #1f2228;
+            --bg-tertiary: #282c34;
+            --bg-hover: #2d323c;
+            --border: #3a3f4a;
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa0aa;
+            --text-muted: #6b7280;
+            --accent-blue: #009fe8;
+            --accent-green: #2ecc71;
+            --accent-red: #e74c3c;
+            --accent-orange: #f39c12;
+            --sidebar-width: 320px;
+            --animation-fast: 150ms;
+            --animation-normal: 250ms;
+            --animation-slow: 350ms;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        @keyframes slideRight { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes slideLeft { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(-20px); } }
+        .animate-fade-in { animation: fadeIn var(--animation-normal) ease-out; }
+        .animate-slide-up { animation: slideUp var(--animation-normal) ease-out; }
+        .animate-slide-down { animation: slideDown var(--animation-normal) ease-out; }
+        .animate-scale-in { animation: scaleIn var(--animation-fast) ease-out; }
+        .animate-pulse { animation: pulse 1.5s ease-in-out infinite; }
+        .animate-slide-right { animation: slideRight var(--animation-fast) ease-out; }
+        .animate-slide-left { animation: slideLeft var(--animation-fast) ease-in; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+        }
+        /* Registration Notice Banner */
+        .reg-notice {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 2000;
+            background: linear-gradient(90deg, var(--accent-orange), #e67e22);
+            color: white; padding: 10px 16px; text-align: center;
+            font-size: 13px; font-weight: 500;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            animation: slideDown var(--animation-normal) ease-out;
+        }
+        .reg-notice a { color: white; text-decoration: underline; font-weight: 600; }
+        .reg-notice-close {
+            position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; color: white; font-size: 18px; cursor: pointer;
+            opacity: 0.7; transition: opacity 0.15s; padding: 0; line-height: 1;
+        }
+        .reg-notice-close:hover { opacity: 1; }
+        .reg-notice.hidden { display: none; }
+
+        /* Login Screen */
+        .login-screen {
+            position: fixed; inset: 0; background: var(--bg-primary);
+            display: flex; align-items: center; justify-content: center; z-index: 1000;
+            flex-direction: column; gap: 24px; padding-top: 50px;
+        }
+        .login-screen.hidden { display: none !important; }
+        .login-box {
+            background: var(--bg-secondary); border: 1px solid var(--border);
+            border-radius: 16px; padding: 48px 40px; width: 100%; max-width: 420px;
+            animation: scaleIn var(--animation-normal) ease-out;
+        }
+        .login-title { font-size: 28px; font-weight: 600; margin-bottom: 8px; text-align: center; }
+        .login-subtitle { color: var(--text-secondary); text-align: center; margin-bottom: 32px; }
+        .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+        .input-label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+        .input-row { display: flex; gap: 12px; }
+
+        /* Custom Country Selector */
+        .country-selector { position: relative; flex-shrink: 0; }
+        .country-trigger {
+            display: flex; align-items: center; gap: 10px;
+            width: 140px; min-width: 140px;
+            background: var(--bg-tertiary); border: 1px solid var(--border);
+            border-radius: 10px; padding: 12px 14px; color: var(--text-primary);
+            font-size: 15px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
+            user-select: none;
+        }
+        .country-trigger:hover, .country-trigger:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(0, 159, 232, 0.15); outline: none; }
+        .country-trigger:focus-visible { border-color: var(--accent-blue); }
+        .country-trigger.open { border-color: var(--accent-blue); }
+        .country-flag { font-size: 20px; line-height: 1; }
+        .country-code { font-weight: 600; }
+        .country-chevron { margin-left: auto; font-size: 12px; color: var(--text-muted); transition: transform 0.2s ease; }
+        .country-trigger.open .country-chevron { transform: rotate(180deg); }
+        .country-dropdown {
+            position: absolute; top: calc(100% + 8px); left: 0; right: 0;
+            min-width: 320px; /* Wider dropdown for country names */
+            background: var(--bg-secondary); border: 1px solid var(--border);
+            border-radius: 10px; overflow: hidden; z-index: 100;
+            max-height: 280px; overflow-y: auto;
+            opacity: 0; visibility: hidden; transform: translateX(-20px);
+            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+        .country-dropdown.open { opacity: 1; visibility: visible; transform: translateX(0); }
+        .country-option {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 14px; cursor: pointer;
+            transition: background 0.1s; white-space: nowrap;
+        }
+        .country-option:hover, .country-option.highlighted { background: var(--bg-hover); }
+        .country-option-flag { font-size: 20px; }
+        .country-option-code { font-weight: 600; min-width: 50px; color: var(--accent-blue); }
+        .country-option-name { flex: 1; color: var(--text-primary); }
+        .country-search { padding: 10px; border-bottom: 1px solid var(--border); }
+        .country-search-input {
+            width: 100%; background: var(--bg-tertiary); border: 1px solid var(--border);
+            border-radius: 8px; padding: 10px 12px; color: var(--text-primary); font-size: 14px;
+            outline: none; transition: border-color 0.15s;
+        }
+        .country-search-input:focus { border-color: var(--accent-blue); }
+
+        .input-field {
+            flex: 1; background: var(--bg-tertiary); border: 1px solid var(--border);
+            border-radius: 10px; padding: 14px 16px; color: var(--text-primary);
+            font-size: 15px; outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+            font-family: 'SF Mono', 'Fira Code', monospace; letter-spacing: 0.5px;
+        }
+        .input-field:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(0, 159, 232, 0.15); }
+
+        .btn {
+            background: var(--accent-blue); color: white; border: none;
+            border-radius: 10px; padding: 14px 24px; font-size: 15px; font-weight: 600;
+            cursor: pointer; transition: opacity 0.15s, transform 0.1s, background 0.15s;
+            width: 100%;
+        }
+        .btn:hover { background: #0088cc; }
+        .btn:active { transform: scale(0.98); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary {
+            background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { background: var(--bg-hover); }
+        .error-msg { color: var(--accent-red); font-size: 13px; text-align: center; min-height: 20px; animation: fadeIn var(--animation-fast); }
+        .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid transparent; border-top-color: currentColor; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Main App Layout */
+        .app { display: flex; width: 100%; height: 100%; }
+        .sidebar {
+            width: var(--sidebar-width); min-width: var(--sidebar-width);
+            background: var(--bg-secondary); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; overflow: hidden;
+            animation: slideUp var(--animation-normal) ease-out;
+        }
+        .sidebar-header {
+            padding: 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px;
+        }
+        .avatar {
+            width: 40px; height: 40px; border-radius: 50%; background: var(--accent-blue);
+            display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 16px; color: white;
+            overflow: hidden; flex-shrink: 0; transition: transform 0.2s ease;
+        }
+        .avatar:hover { transform: scale(1.05); }
+        .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .user-info { flex: 1; min-width: 0; }
+        .user-name { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .user-status { font-size: 12px; color: var(--text-secondary); }
+
+        .search-box { padding: 12px; border-bottom: 1px solid var(--border); }
+        .search-input {
+            width: 100%; background: var(--bg-tertiary); border: 1px solid var(--border);
+            border-radius: 10px; padding: 10px 14px; color: var(--text-primary); font-size: 14px;
+            outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .search-input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(0, 159, 232, 0.15); }
+
+        .chat-list { flex: 1; overflow-y: auto; padding: 8px 4px; }
+        .chat-item {
+            display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+            border-radius: 10px; cursor: pointer; transition: background 0.1s, transform 0.1s;
+            position: relative; animation: fadeIn var(--animation-fast) ease-out;
+        }
+        .chat-item:hover { background: var(--bg-hover); transform: translateX(2px); }
+        .chat-item.active { background: var(--bg-hover); }
+        .chat-avatar {
+            width: 48px; height: 48px; border-radius: 50%; background: var(--bg-tertiary);
+            display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; color: var(--text-secondary);
+            overflow: hidden; flex-shrink: 0; transition: transform 0.2s ease;
+        }
+        .chat-item:hover .chat-avatar { transform: scale(1.05); }
+        .chat-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .chat-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .chat-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .chat-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .chat-time { font-size: 11px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+        .chat-preview { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .chat-last-msg { font-size: 13px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+        .chat-unread {
+            background: var(--accent-blue); color: white; font-size: 11px; font-weight: 600;
+            min-width: 20px; height: 20px; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 0 6px;
+            flex-shrink: 0; animation: scaleIn var(--animation-fast) ease-out;
+        }
+
+        .main-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-primary); overflow: hidden; }
+        .empty-state { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; color: var(--text-muted); animation: fadeIn var(--animation-normal) ease-out; }
+        .empty-state svg { width: 80px; height: 80px; opacity: 0.5; animation: pulse 2s ease-in-out infinite; }
+
+        .chat-header-bar {
+            padding: 12px 16px; border-bottom: 1px solid var(--border);
+            background: var(--bg-secondary); display: flex; align-items: center; gap: 12px;
+            animation: slideDown var(--animation-fast) ease-out;
+        }
+        .chat-header-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--bg-tertiary); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 16px; color: var(--text-secondary); overflow: hidden; transition: transform 0.2s ease; }
+        .chat-header-avatar:hover { transform: scale(1.05); }
+        .chat-header-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .chat-header-info { flex: 1; min-width: 0; }
+        .chat-header-name { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .chat-header-status { font-size: 12px; color: var(--text-secondary); }
+        .chat-header-actions { display: flex; gap: 8px; }
+        .icon-btn {
+            background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 50%;
+            width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; color: var(--text-secondary); transition: background 0.1s, color 0.1s, transform 0.1s;
+        }
+        .icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); transform: scale(1.1); }
+        .icon-btn:active { transform: scale(0.95); }
+        .icon-btn svg { width: 20px; height: 20px; }
+
+        .messages-area { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+        .message { display: flex; gap: 8px; max-width: 80%; animation: slideUp var(--animation-fast) ease-out; }
+        .message.outgoing { align-self: flex-end; flex-direction: row-reverse; }
+        .message-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-tertiary); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; color: var(--text-secondary); flex-shrink: 0; overflow: hidden; margin-bottom: 4px; transition: transform 0.2s ease; }
+        .message-avatar:hover { transform: scale(1.1); }
+        .message-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .message-bubble {
+            background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 16px;
+            padding: 10px 14px; position: relative; word-wrap: break-word;
+            animation: scaleIn var(--animation-fast) ease-out;
+        }
+        .message.outgoing .message-bubble { background: var(--accent-blue); border-color: var(--accent-blue); border-bottom-right-radius: 4px; }
+        .message.incoming .message-bubble { border-bottom-left-radius: 4px; }
+        .message-sender { font-size: 12px; font-weight: 600; margin-bottom: 4px; color: var(--text-secondary); }
+        .message.outgoing .message-sender { display: none; }
+        .message-text { font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
+        .message-text a { color: var(--accent-blue); text-decoration: none; transition: color 0.15s; }
+        .message-text a:hover { color: #00bfff; text-decoration: underline; }
+        .message-time { font-size: 11px; color: var(--text-muted); margin-top: 4px; text-align: right; }
+        .message.outgoing .message-time { color: rgba(255,255,255,0.7); }
+
+        /* Media messages */
+        .message-media { margin-top: 8px; border-radius: 12px; overflow: hidden; max-width: 100%; }
+        .message-media img { max-width: 100%; height: auto; display: block; max-height: 400px; object-fit: contain; transition: transform 0.3s ease; }
+        .message-media img:hover { transform: scale(1.01); }
+        .message-media video { max-width: 100%; max-height: 400px; display: block; }
+        .message-media audio { width: 100%; max-width: 300px; display: block; margin-top: 8px; }
+        .message-file { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-tertiary); border-radius: 12px; transition: background 0.15s; }
+        .message-file:hover { background: var(--bg-hover); }
+        .message-file-icon { font-size: 32px; }
+        .message-file-info { flex: 1; min-width: 0; }
+        .message-file-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .message-file-size { font-size: 12px; color: var(--text-muted); }
+
+        .input-area { padding: 16px; border-top: 1px solid var(--border); background: var(--bg-secondary); animation: slideUp var(--animation-fast) ease-out; }
+        .input-wrapper { display: flex; align-items: flex-end; gap: 12px; max-width: 900px; margin: 0 auto; }
+        .message-input {
+            flex: 1; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 24px;
+            padding: 12px 16px; color: var(--text-primary); font-size: 14px; line-height: 1.5;
+            outline: none; resize: none; min-height: 48px; max-height: 150px; font-family: inherit;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .message-input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(0, 159, 232, 0.15); }
+        .send-btn {
+            background: var(--accent-blue); color: white; border: none; border-radius: 50%;
+            width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: background 0.15s, transform 0.1s; flex-shrink: 0;
+        }
+        .send-btn:hover { background: #0088cc; transform: scale(1.05); }
+        .send-btn:active { transform: scale(0.95); }
+        .send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .send-btn svg { width: 20px; height: 20px; transition: transform 0.15s; }
+        .send-btn:not(:disabled):hover svg { transform: translateX(2px); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; transition: background 0.15s; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* New chat modal */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(4px); }
+        .modal-overlay.visible { display: flex; animation: fadeIn var(--animation-fast) ease-out; }
+        .modal { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 16px; padding: 24px; width: 100%; max-width: 480px; max-height: 80vh; overflow: auto; animation: scaleIn var(--animation-normal) ease-out; }
+        .modal-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+        .contact-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 10px; cursor: pointer; transition: background 0.1s, transform 0.1s; }
+        .contact-item:hover { background: var(--bg-hover); transform: translateX(4px); }
+        .contact-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--bg-tertiary); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 16px; color: var(--text-secondary); overflow: hidden; transition: transform 0.2s ease; }
+        .contact-item:hover .contact-avatar { transform: scale(1.05); }
+        .contact-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .contact-name { font-weight: 500; }
+        .contact-username { font-size: 12px; color: var(--text-muted); }
+
+        /* Loading skeleton */
+        .skeleton { background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-hover) 50%, var(--bg-tertiary) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4px; }
+        .skeleton-avatar { width: 48px; height: 48px; border-radius: 50%; }
+        .skeleton-text { height: 16px; margin: 8px 0; }
+        .skeleton-text.short { width: 60%; }
+        .skeleton-text.medium { width: 80%; }
+    </style>
+</head>
+<body>
+    <!-- Registration Notice -->
+    <div class="reg-notice" id="regNotice">
+        <span>You cannot register for Telegram using this app. Please sign up using the official Telegram app on your phone or at </span>
+        <a href="https://web.telegram.org" target="_blank" rel="noopener">web.telegram.org</a>
+        <button class="reg-notice-close" id="regNoticeClose" aria-label="Dismiss">&times;</button>
+    </div>
+
+    <!-- Login Screen -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-box">
+            <div class="login-title">telerust</div>
+            <div class="login-subtitle">Enter your phone number to continue</div>
+            <div class="input-group">
+                <label class="input-label">Phone Number</label>
+                <div class="input-row">
+                    <!-- Custom Country Selector -->
+                    <div class="country-selector" id="countrySelector">
+                        <button type="button" class="country-trigger" id="countryTrigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Select country">
+                            <span class="country-flag" id="triggerFlag">🇺🇸</span>
+                            <span class="country-code" id="triggerCode">+1</span>
+                            <span class="country-chevron">▼</span>
+                        </button>
+                        <div class="country-dropdown" id="countryDropdown" role="listbox" aria-label="Countries">
+                            <div class="country-search">
+                                <input type="text" class="country-search-input" id="countrySearchInput" placeholder="Search countries..." aria-label="Search countries">
+                            </div>
+                            <div class="country-options" id="countryOptions"></div>
+                        </div>
+                    </div>
+                    <input type="tel" class="input-field" id="phoneInput" placeholder="555 123 4567" autocomplete="tel" inputmode="tel" aria-label="Phone number">
+                </div>
+            </div>
+            <button class="btn" id="requestCodeBtn"><span class="spinner" id="requestSpinner" style="display:none;"></span>Next</button>
+            <div class="error-msg" id="loginError"></div>
+        </div>
+    </div>
+
+    <!-- Code Verification Screen -->
+    <div class="login-screen hidden" id="codeScreen">
+        <div class="login-box">
+            <div class="login-title">Enter Code</div>
+            <div class="login-subtitle">We sent a code to <span id="codePhoneDisplay"></span></div>
+            <div class="input-group">
+                <label class="input-label">Code</label>
+                <input type="text" class="input-field" id="codeInput" placeholder="12345" autocomplete="one-time-code" maxlength="5" inputmode="numeric">
+            </div>
+            <button class="btn" id="submitCodeBtn"><span class="spinner" id="submitSpinner" style="display:none;"></span>Sign In</button>
+            <button class="btn btn-secondary" style="margin-top:12px;" id="backToPhoneBtn">Change Number</button>
+            <div class="error-msg" id="codeError"></div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div class="app hidden" id="app">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="avatar" id="myAvatar">?</div>
+                <div class="user-info">
+                    <div class="user-name" id="myName">Loading...</div>
+                    <div class="user-status" id="myStatus">Connecting...</div>
+                </div>
+            </div>
+            <div class="search-box">
+                <input type="text" class="search-input" id="searchInput" placeholder="Search messages...">
+            </div>
+            <div class="chat-list" id="chatList"></div>
+        </aside>
+        <main class="main-area">
+            <div class="empty-state" id="emptyState">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                <div>Select a chat to start messaging</div>
+            </div>
+            <div class="chat-view hidden" id="chatView">
+                <div class="chat-header-bar">
+                    <div class="chat-header-avatar" id="chatAvatar">?</div>
+                    <div class="chat-header-info">
+                        <div class="chat-header-name" id="chatName">Chat</div>
+                        <div class="chat-header-status" id="chatStatus"></div>
+                    </div>
+                    <div class="chat-header-actions">
+                        <button class="icon-btn" title="Voice Call"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg></button>
+                        <button class="icon-btn" title="Video Call"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg></button>
+                        <button class="icon-btn" title="More"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg></button>
+                    </div>
+                </div>
+                <div class="messages-area" id="messagesArea"></div>
+                <div class="input-area">
+                    <div class="input-wrapper">
+                        <textarea class="message-input" id="messageInput" placeholder="Message" rows="1"></textarea>
+                        <button class="send-btn" id="sendBtn" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- New Chat Modal -->
+    <div class="modal-overlay" id="newChatModal">
+        <div class="modal">
+            <div class="modal-title">New Message</div>
+            <div class="search-box" style="border:none; padding:0 0 16px;">
+                <input type="text" class="search-input" id="contactSearch" placeholder="Search contacts...">
+            </div>
+            <div id="contactList"></div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================================
+        // Tauri API Initialization - Wait for native Tauri 2 injection
+        // ============================================================================
+        let invoke = null;
+        let tauriApiReady = false;
+
+        // Try to load Tauri script from internal protocol as fallback
+        async function loadTauriScript() {
+            return new Promise((resolve) => {
+                const script = document.createElement('script');
+                script.src = 'tauri://localhost/__tauri__/tauri.js';
+                script.onload = () => {
+                    console.log('Tauri script loaded from tauri:// protocol');
+                    resolve(true);
+                };
+                script.onerror = () => {
+                    console.log('Failed to load Tauri script from tauri:// protocol');
+                    resolve(false);
+                };
+                document.head.appendChild(script);
+            });
+        }
+
+        // In Tauri 2, the API is automatically injected as window.__TAURI__
+        // In frontendDist mode, this should still happen but may take a moment
+        async function initTauri() {
+            console.log('Waiting for Tauri API...');
+
+            // First, try to load the Tauri script from internal protocol
+            await loadTauriScript();
+
+            // Wait for native Tauri API to be injected
+            await new Promise(resolve => {
+                let attempts = 0;
+                const maxAttempts = 300; // 15 seconds
+                const check = setInterval(() => {
+                    attempts++;
+
+                    // Check all known Tauri 2 API locations
+                    if (window.__TAURI__?.core?.invoke) {
+                        clearInterval(check);
+                        invoke = window.__TAURI__.core.invoke.bind(window.__TAURI__.core);
+                        tauriApiReady = true;
+                        console.log('Tauri API found at window.__TAURI__.core.invoke');
+                        resolve();
+                        return;
+                    }
+                    if (window.__TAURI__?.invoke) {
+                        clearInterval(check);
+                        invoke = window.__TAURI__.invoke.bind(window.__TAURI__);
+                        tauriApiReady = true;
+                        console.log('Tauri API found at window.__TAURI__.invoke');
+                        resolve();
+                        return;
+                    }
+                    if (window.__TAURI_INTEROP__?.invoke) {
+                        clearInterval(check);
+                        invoke = window.__TAURI_INTEROP__.invoke.bind(window.__TAURI_INTEROP__);
+                        tauriApiReady = true;
+                        console.log('Tauri API found at window.__TAURI_INTEROP__.invoke');
+                        resolve();
+                        return;
+                    }
+                    if (window.ipc?.invoke) {
+                        clearInterval(check);
+                        invoke = window.ipc.invoke.bind(window.ipc);
+                        tauriApiReady = true;
+                        console.log('Tauri API found at window.ipc.invoke');
+                        resolve();
+                        return;
+                    }
+
+                    if (attempts >= maxAttempts) {
+                        clearInterval(check);
+                        console.error('Tauri API not available after 15 seconds');
+                        console.log('window.__TAURI__:', window.__TAURI__);
+                        console.log('window.__TAURI_INTEROP__:', window.__TAURI_INTEROP__);
+                        console.log('window.ipc:', window.ipc);
+                        // Show visible error in UI
+                        const errorEl = document.getElementById('loginError');
+                        if (errorEl) {
+                            errorEl.textContent = 'Tauri API not available. Please run via "tauri dev" for development or use the built executable from "tauri build".';
+                            errorEl.style.display = 'block';
+                        }
+                        resolve();
+                    }
+                }, 50);
+            });
+        }
+
+        // Wrapper with timeout for invoke calls
+        async function invokeWithTimeout(cmd, args, timeoutMs = 10000) {
+            if (!invoke) throw new Error('Tauri API not initialized');
+
+            return Promise.race([
+                invoke(cmd, args),
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error(`${cmd} timed out after ${timeoutMs}ms`)), timeoutMs)
+                )
+            ]);
+        }
+
+        // ============================================================================
+        // Country Data with Flags
+        // ============================================================================
+        const countries = [
+            { code: 'US', dialCode: '+1', name: 'United States', flag: '🇺🇸' },
+            { code: 'GB', dialCode: '+44', name: 'United Kingdom', flag: '🇬🇧' },
+            { code: 'CA', dialCode: '+1', name: 'Canada', flag: '🇨🇦' },
+            { code: 'AU', dialCode: '+61', name: 'Australia', flag: '🇦🇺' },
+            { code: 'DE', dialCode: '+49', name: 'Germany', flag: '🇩🇪' },
+            { code: 'FR', dialCode: '+33', name: 'France', flag: '🇫🇷' },
+            { code: 'IT', dialCode: '+39', name: 'Italy', flag: '🇮🇹' },
+            { code: 'ES', dialCode: '+34', name: 'Spain', flag: '🇪🇸' },
+            { code: 'NL', dialCode: '+31', name: 'Netherlands', flag: '🇳🇱' },
+            { code: 'BR', dialCode: '+55', name: 'Brazil', flag: '🇧🇷' },
+            { code: 'IN', dialCode: '+91', name: 'India', flag: '🇮🇳' },
+            { code: 'CN', dialCode: '+86', name: 'China', flag: '🇨🇳' },
+            { code: 'JP', dialCode: '+81', name: 'Japan', flag: '🇯🇵' },
+            { code: 'KR', dialCode: '+82', name: 'South Korea', flag: '🇰🇷' },
+            { code: 'RU', dialCode: '+7', name: 'Russia', flag: '🇷🇺' },
+            { code: 'MX', dialCode: '+52', name: 'Mexico', flag: '🇲🇽' },
+            { code: 'TR', dialCode: '+90', name: 'Turkey', flag: '🇹🇷' },
+            { code: 'PL', dialCode: '+48', name: 'Poland', flag: '🇵🇱' },
+            { code: 'SE', dialCode: '+46', name: 'Sweden', flag: '🇸🇪' },
+            { code: 'NO', dialCode: '+47', name: 'Norway', flag: '🇳🇴' },
+            { code: 'FI', dialCode: '+358', name: 'Finland', flag: '🇫🇮' },
+            { code: 'DK', dialCode: '+45', name: 'Denmark', flag: '🇩🇰' },
+            { code: 'CH', dialCode: '+41', name: 'Switzerland', flag: '🇨🇭' },
+            { code: 'AT', dialCode: '+43', name: 'Austria', flag: '🇦🇹' },
+            { code: 'BE', dialCode: '+32', name: 'Belgium', flag: '🇧🇪' },
+            { code: 'IE', dialCode: '+353', name: 'Ireland', flag: '🇮🇪' },
+            { code: 'PT', dialCode: '+351', name: 'Portugal', flag: '🇵🇹' },
+            { code: 'GR', dialCode: '+30', name: 'Greece', flag: '🇬🇷' },
+            { code: 'CZ', dialCode: '+420', name: 'Czech Republic', flag: '🇨🇿' },
+            { code: 'HU', dialCode: '+36', name: 'Hungary', flag: '🇭🇺' },
+            { code: 'RO', dialCode: '+40', name: 'Romania', flag: '🇷🇴' },
+            { code: 'UA', dialCode: '+380', name: 'Ukraine', flag: '🇺🇦' },
+            { code: 'IL', dialCode: '+972', name: 'Israel', flag: '🇮🇱' },
+            { code: 'SA', dialCode: '+966', name: 'Saudi Arabia', flag: '🇸🇦' },
+            { code: 'AE', dialCode: '+971', name: 'UAE', flag: '🇦🇪' },
+            { code: 'SG', dialCode: '+65', name: 'Singapore', flag: '🇸🇬' },
+            { code: 'HK', dialCode: '+852', name: 'Hong Kong', flag: '🇭🇰' },
+            { code: 'TW', dialCode: '+886', name: 'Taiwan', flag: '🇹🇼' },
+            { code: 'NZ', dialCode: '+64', name: 'New Zealand', flag: '🇳🇿' },
+            { code: 'ZA', dialCode: '+27', name: 'South Africa', flag: '🇿🇦' },
+            { code: 'AR', dialCode: '+54', name: 'Argentina', flag: '🇦🇷' },
+            { code: 'CL', dialCode: '+56', name: 'Chile', flag: '🇨🇱' },
+            { code: 'CO', dialCode: '+57', name: 'Colombia', flag: '🇨🇴' },
+            { code: 'PE', dialCode: '+51', name: 'Peru', flag: '🇵🇪' },
+            { code: 'VE', dialCode: '+58', name: 'Venezuela', flag: '🇻🇪' },
+            { code: 'EG', dialCode: '+20', name: 'Egypt', flag: '🇪🇬' },
+            { code: 'NG', dialCode: '+234', name: 'Nigeria', flag: '🇳🇬' },
+            { code: 'KE', dialCode: '+254', name: 'Kenya', flag: '🇰🇪' },
+            { code: 'MA', dialCode: '+212', name: 'Morocco', flag: '🇲🇦' },
+            { code: 'TH', dialCode: '+66', name: 'Thailand', flag: '🇹🇭' },
+            { code: 'VN', dialCode: '+84', name: 'Vietnam', flag: '🇻🇳' },
+            { code: 'PH', dialCode: '+63', name: 'Philippines', flag: '🇵🇭' },
+            { code: 'ID', dialCode: '+62', name: 'Indonesia', flag: '🇮🇩' },
+            { code: 'MY', dialCode: '+60', name: 'Malaysia', flag: '🇲🇾' },
+            { code: 'PK', dialCode: '+92', name: 'Pakistan', flag: '🇵🇰' },
+            { code: 'BD', dialCode: '+880', name: 'Bangladesh', flag: '🇧🇩' },
+        ];
+
+        // ============================================================================
+        // State
+        // ============================================================================
+        let currentChatId = null;
+        let currentChatPeerId = null;
+        let dialogs = [];
+        let contacts = [];
+        let myInfo = null;
+        let selectedCountry = countries[0]; // Default to US
+        let countryDropdownOpen = false;
+        let highlightedIndex = -1;
+        let filteredCountries = [...countries];
+
+        // ============================================================================
+        // UI Helpers
+        // ============================================================================
+        function showScreen(id) {
+            document.querySelectorAll('.login-screen, #app').forEach(el => el.classList.add('hidden'));
+            document.getElementById(id)?.classList.remove('hidden');
+        }
+
+        function setBtnLoading(btnId, loading, text) {
+            const btn = document.getElementById(btnId);
+            const spinner = btn.querySelector('.spinner');
+            if (loading) {
+                btn.disabled = true;
+                spinner.style.display = 'inline-block';
+                btn.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = ' ' + text; });
+            } else {
+                btn.disabled = false;
+                spinner.style.display = 'none';
+                btn.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = ' ' + text; });
+            }
+        }
+
+        function showError(id, msg) {
+            const el = document.getElementById(id);
+            if (el) { el.textContent = msg; setTimeout(() => el.textContent = '', 5000); }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function linkify(text) {
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            return escapeHtml(text).replace(urlRegex, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+        }
+
+        function formatTime(date) {
+            const now = new Date();
+            const d = new Date(date);
+            if (d.toDateString() === now.toDateString()) {
+                return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } else if (d.getFullYear() === now.getFullYear()) {
+                return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } else {
+                return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+            }
+        }
+
+        function getInitials(name) {
+            return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+        }
+
+        function getColorFromString(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            const hue = Math.abs(hash) % 360;
+            return `hsl(${hue}, 65%, 45%)`;
+        }
+
+        // ============================================================================
+        // Phone Number Formatting - Generic grouping: 3-3-4 then 3-3-3...
+        // ============================================================================
+        function formatPhoneNumber(digits) {
+            if (!digits) return '';
+
+            // For US/Canada (+1): use 3-3-4 format for first 10 digits
+            if (selectedCountry.dialCode === '+1') {
+                if (digits.length <= 3) return digits;
+                if (digits.length <= 6) return digits.slice(0,3) + ' ' + digits.slice(3);
+                if (digits.length <= 10) return digits.slice(0,3) + ' ' + digits.slice(3,6) + ' ' + digits.slice(6);
+                // For more than 10 digits: 3-3-4 then groups of 3
+                const first10 = digits.slice(0,10);
+                const rest = digits.slice(10);
+                let formatted = first10.slice(0,3) + ' ' + first10.slice(3,6) + ' ' + first10.slice(6);
+                if (rest) {
+                    const groups = rest.match(/.{1,3}/g) || [];
+                    formatted += ' ' + groups.join(' ');
+                }
+                return formatted;
+            }
+
+            // For other countries: 3-3-3... then groups of 3
+            if (digits.length <= 3) return digits;
+            if (digits.length <= 6) return digits.slice(0,3) + ' ' + digits.slice(3);
+            if (digits.length <= 9) return digits.slice(0,3) + ' ' + digits.slice(3,6) + ' ' + digits.slice(6);
+
+            // For more than 9 digits: 3-3-3 then groups of 3
+            const first9 = digits.slice(0,9);
+            const rest = digits.slice(9);
+            let formatted = first9.slice(0,3) + ' ' + first9.slice(3,6) + ' ' + first9.slice(6);
+            if (rest) {
+                const groups = rest.match(/.{1,3}/g) || [];
+                formatted += ' ' + groups.join(' ');
+            }
+            return formatted;
+        }
+
+        function unformatPhoneNumber(formatted) {
+            return formatted.replace(/\D/g, '');
+        }
+
+        // ============================================================================
+        // Country Selector Logic
+        // ============================================================================
+        function populateCountryOptions(filter = '') {
+            const optionsContainer = document.getElementById('countryOptions');
+            const lowerFilter = filter.toLowerCase();
+            filteredCountries = countries.filter(c =>
+                c.name.toLowerCase().includes(lowerFilter) ||
+                c.dialCode.includes(lowerFilter) ||
+                c.code.toLowerCase().includes(lowerFilter)
+            );
+            highlightedIndex = -1;
+            optionsContainer.innerHTML = filteredCountries.map((c, index) => `
+                <div class="country-option" data-index="${index}" data-dial-code="${c.dialCode}" role="option" aria-selected="${c.dialCode === selectedCountry.dialCode}">
+                    <span class="country-option-flag">${c.flag}</span>
+                    <span class="country-option-code">${c.dialCode}</span>
+                    <span class="country-option-name">${escapeHtml(c.name)}</span>
+                </div>
+            `).join('');
+
+            optionsContainer.querySelectorAll('.country-option').forEach(opt => {
+                opt.addEventListener('click', () => selectCountry(opt.dataset.dialCode));
+                opt.addEventListener('mouseenter', () => {
+                    highlightedIndex = parseInt(opt.dataset.index);
+                    updateHighlighted();
+                });
+            });
+        }
+
+        function updateHighlighted() {
+            const options = document.querySelectorAll('.country-option');
+            options.forEach((opt, i) => {
+                opt.classList.toggle('highlighted', i === highlightedIndex);
+            });
+            if (highlightedIndex >= 0) {
+                options[highlightedIndex]?.scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        function selectCountry(dialCode) {
+            const country = countries.find(c => c.dialCode === dialCode) || countries[0];
+            selectedCountry = country;
+            updateTriggerDisplay();
+            closeCountryDropdown();
+            const phoneInput = document.getElementById('phoneInput');
+            const digits = unformatPhoneNumber(phoneInput.value);
+            phoneInput.value = formatPhoneNumber(digits);
+            phoneInput.focus();
+        }
+
+        function updateTriggerDisplay() {
+            // Closed state: +1 🇺🇸 (dial code + flag)
+            document.getElementById('triggerFlag').textContent = selectedCountry.flag;
+            document.getElementById('triggerCode').textContent = selectedCountry.dialCode;
+        }
+
+        function openCountryDropdown() {
+            countryDropdownOpen = true;
+            document.getElementById('countryTrigger').classList.add('open');
+            document.getElementById('countryTrigger').setAttribute('aria-expanded', 'true');
+            document.getElementById('countryDropdown').classList.add('open');
+            document.getElementById('countrySearchInput').focus();
+            populateCountryOptions('');
+        }
+
+        function closeCountryDropdown() {
+            countryDropdownOpen = false;
+            document.getElementById('countryTrigger').classList.remove('open');
+            document.getElementById('countryTrigger').setAttribute('aria-expanded', 'false');
+            document.getElementById('countryDropdown').classList.remove('open');
+            highlightedIndex = -1;
+        }
+
+        function toggleCountryDropdown() {
+            if (countryDropdownOpen) closeCountryDropdown();
+            else openCountryDropdown();
+        }
+
+        // ============================================================================
+        // Phone Number Formatting - Cursor Position Helper
+        // ============================================================================
+        function getCursorPosition(oldFormatted, newFormatted, oldCursorPos, digitDiff) {
+            // Count spaces before cursor in old value
+            let oldSpacesBefore = 0;
+            for (let i = 0; i < oldCursorPos && i < oldFormatted.length; i++) {
+                if (oldFormatted[i] === ' ') oldSpacesBefore++;
+            }
+
+            // Find position in new formatted string that has same number of digits before it
+            let digitsBefore = 0;
+            let newPos = 0;
+            for (let i = 0; i < newFormatted.length; i++) {
+                if (newFormatted[i] !== ' ') digitsBefore++;
+                if (digitsBefore > oldCursorPos - oldSpacesBefore) {
+                    newPos = i;
+                    break;
+                }
+                newPos = i + 1;
+            }
+
+            // Adjust for deleted digits
+            if (digitDiff < 0) {
+                newPos = Math.max(0, newPos + digitDiff);
+            }
+
+            return Math.min(newPos, newFormatted.length);
+        }
+
+        // ============================================================================
+        // Phone Input Handling
+        // ============================================================================
+        function setupPhoneInput() {
+            const phoneInput = document.getElementById('phoneInput');
+
+            phoneInput.addEventListener('beforeinput', (e) => {
+                // Handle delete/backspace before input to preserve cursor position
+                if (e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward') {
+                    e.target.dataset.deleting = 'true';
+                }
+            });
+
+            phoneInput.addEventListener('input', (e) => {
+                const cursorPos = e.target.selectionStart;
+                const oldValue = e.target.dataset.lastValue || '';
+                const newValue = e.target.value;
+                const digits = unformatPhoneNumber(newValue);
+                const formatted = formatPhoneNumber(digits);
+
+                const oldDigits = unformatPhoneNumber(oldValue);
+                const digitDiff = digits.length - oldDigits.length;
+                const wasDeleting = e.target.dataset.deleting === 'true';
+                e.target.dataset.deleting = 'false';
+
+                // Calculate new cursor position
+                let newCursorPos;
+                if (wasDeleting && digitDiff < 0) {
+                    // For deletion, keep cursor at same relative position
+                    newCursorPos = Math.max(0, cursorPos - 1);
+                    // Adjust for spaces
+                    while (newCursorPos > 0 && formatted[newCursorPos - 1] === ' ') {
+                        newCursorPos--;
+                    }
+                } else {
+                    newCursorPos = getCursorPosition(oldValue, formatted, cursorPos, digitDiff);
+                }
+
+                e.target.value = formatted;
+                e.target.dataset.lastValue = formatted;
+
+                // Use requestAnimationFrame for smoother cursor positioning
+                requestAnimationFrame(() => {
+                    phoneInput.setSelectionRange(newCursorPos, newCursorPos);
+                });
+            });
+
+            phoneInput.addEventListener('keydown', (e) => {
+                // Allow navigation keys, backspace, delete, tab
+                const allowedKeys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab', 'Backspace', 'Delete', 'Home', 'End'];
+                if (allowedKeys.includes(e.key)) return;
+                // Allow Ctrl/Cmd combinations (copy, paste, select all)
+                if (e.ctrlKey || e.metaKey) return;
+                // Only allow digits
+                if (!/^\d$/.test(e.key)) {
+                    e.preventDefault();
+                }
+            });
+
+            phoneInput.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const paste = (e.clipboardData || window.clipboardData).getData('text');
+                const digits = unformatPhoneNumber(paste);
+                const formatted = formatPhoneNumber(digits);
+                phoneInput.value = formatted;
+                phoneInput.dataset.lastValue = formatted;
+                // Move cursor to end after paste
+                requestAnimationFrame(() => {
+                    phoneInput.setSelectionRange(formatted.length, formatted.length);
+                });
+            });
+
+            // Initialize with empty value
+            phoneInput.dataset.lastValue = '';
+        }
+
+        function getFullPhoneNumber() {
+            const phone = document.getElementById('phoneInput').value.trim();
+            if (!phone) return '';
+            const digits = unformatPhoneNumber(phone);
+            return selectedCountry.dialCode + digits;
+        }
+
+        function getDisplayPhoneNumber() {
+            const phone = document.getElementById('phoneInput').value.trim();
+            if (!phone) return selectedCountry.dialCode;
+            return selectedCountry.dialCode + ' ' + phone;
+        }
+
+        // ============================================================================
+        // Login Flow
+        // ============================================================================
+        document.getElementById('requestCodeBtn').addEventListener('click', async () => {
+            const phone = getFullPhoneNumber();
+            if (!phone || phone.length < 3) return showError('loginError', 'Enter a phone number');
+            setBtnLoading('requestCodeBtn', true, 'Sending...');
+            try {
+                if (!invoke) throw new Error('Tauri API not initialized');
+                await invokeWithTimeout('request_login_code', { phone });
+                document.getElementById('codePhoneDisplay').textContent = getDisplayPhoneNumber();
+                showScreen('codeScreen');
+                document.getElementById('codeInput').focus();
+            } catch (e) {
+                showError('loginError', e.message || e);
+            }
+            setBtnLoading('requestCodeBtn', false, 'Next');
+        });
+
+        document.getElementById('submitCodeBtn').addEventListener('click', async () => {
+            const code = document.getElementById('codeInput').value.trim();
+            if (!code || code.length < 5) return showError('codeError', 'Enter the 5-digit code');
+            setBtnLoading('submitCodeBtn', true, 'Signing in...');
+            try {
+                if (!invoke) throw new Error('Tauri API not initialized');
+                await invokeWithTimeout('submit_login_code', { code });
+                await initApp();
+            } catch (e) {
+                showError('codeError', e.message || e);
+            }
+            setBtnLoading('submitCodeBtn', false, 'Sign In');
+        });
+
+        document.getElementById('backToPhoneBtn').addEventListener('click', () => {
+            showScreen('loginScreen');
+            document.getElementById('phoneInput').focus();
+        });
+
+        document.getElementById('phoneInput').addEventListener('keypress', e => { if (e.key === 'Enter') document.getElementById('requestCodeBtn').click(); });
+        document.getElementById('codeInput').addEventListener('keypress', e => { if (e.key === 'Enter') document.getElementById('submitCodeBtn').click(); });
+
+        // ============================================================================
+        // Country Selector Event Handlers
+        // ============================================================================
+        document.getElementById('countryTrigger').addEventListener('click', toggleCountryDropdown);
+        document.getElementById('countrySearchInput').addEventListener('input', (e) => populateCountryOptions(e.target.value));
+
+        document.getElementById('countrySearchInput').addEventListener('keydown', (e) => {
+            const options = document.querySelectorAll('.country-option');
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                highlightedIndex = Math.min(highlightedIndex + 1, filteredCountries.length - 1);
+                updateHighlighted();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                highlightedIndex = Math.max(highlightedIndex - 1, -1);
+                updateHighlighted();
+            } else if (e.key === 'Enter' && highlightedIndex >= 0) {
+                e.preventDefault();
+                selectCountry(filteredCountries[highlightedIndex].dialCode);
+            } else if (e.key === 'Escape') {
+                closeCountryDropdown();
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            const selector = document.getElementById('countrySelector');
+            if (selector && !selector.contains(e.target)) {
+                closeCountryDropdown();
+            }
+        });
+
+        // ============================================================================
+        // Registration Notice
+        // ============================================================================
+        document.getElementById('regNoticeClose').addEventListener('click', () => {
+            document.getElementById('regNotice').classList.add('hidden');
+            localStorage.setItem('regNoticeDismissed', 'true');
+        });
+
+        // ============================================================================
+        // App Initialization
+        // ============================================================================
+        async function initApp() {
+            try {
+                if (!invoke) throw new Error('Tauri API not initialized');
+                const [meRes, dialogsRes, contactsRes] = await Promise.all([
+                    invokeWithTimeout('get_me'),
+                    invokeWithTimeout('get_dialogs'),
+                    invokeWithTimeout('get_contacts')
+                ]);
+                myInfo = meRes;
+                dialogs = dialogsRes || [];
+                contacts = contactsRes || [];
+                renderMyInfo();
+                renderChatList();
+                showScreen('app');
+            } catch (e) {
+                console.error('Init failed:', e);
+                showError('loginError', 'Failed to initialize app: ' + (e.message || e));
+                showScreen('loginScreen');
+            }
+        }
+
+        function renderMyInfo() {
+            if (!myInfo) return;
+            const name = myInfo.first_name + (myInfo.last_name ? ' ' + myInfo.last_name : '');
+            document.getElementById('myName').textContent = name || 'Unknown';
+            document.getElementById('myStatus').textContent = 'Online';
+            const avatar = document.getElementById('myAvatar');
+            if (myInfo.photo?.photo_small) {
+                avatar.innerHTML = `<img src="${myInfo.photo.photo_small}" alt="">`;
+            } else {
+                avatar.textContent = getInitials(name) || '?';
+                avatar.style.background = getColorFromString(name || '?');
+            }
+        }
+
+        // ============================================================================
+        // Chat List
+        // ============================================================================
+        function renderChatList(filter = '') {
+            const list = document.getElementById('chatList');
+            const filtered = dialogs.filter(d =>
+                d.title.toLowerCase().includes(filter.toLowerCase()) ||
+                (d.username && d.username.toLowerCase().includes(filter.toLowerCase()))
+            );
+            list.innerHTML = filtered.map((chat, index) => {
+                const initials = getInitials(chat.title);
+                const color = getColorFromString(chat.title);
+                const time = chat.last_message_date ? formatTime(chat.last_message_date * 1000) : '';
+                const preview = chat.last_message ? escapeHtml(chat.last_message).slice(0, 50) : '';
+                const unread = chat.unread_count > 0 ? `<span class="chat-unread">${chat.unread_count > 99 ? '99+' : chat.unread_count}</span>` : '';
+                const avatarHtml = chat.photo?.photo_small
+                    ? `<img src="${chat.photo.photo_small}" alt="">`
+                    : initials;
+                const activeClass = currentChatId === chat.id ? ' active' : '';
+                const delay = Math.min(index * 30, 300);
+                return `
+                    <div class="chat-item${activeClass}" data-chat-id="${chat.id}" data-peer-id="${chat.peer_id}" style="animation-delay: ${delay}ms;">
+                        <div class="chat-avatar" style="background:${color}">${avatarHtml}</div>
+                        <div class="chat-info">
+                            <div class="chat-header">
+                                <span class="chat-name">${escapeHtml(chat.title)}</span>
+                                <span class="chat-time">${time}</span>
+                            </div>
+                            <div class="chat-preview">
+                                <span class="chat-last-msg">${preview}</span>
+                                ${unread}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            list.querySelectorAll('.chat-item').forEach(item => {
+                item.addEventListener('click', () => selectChat(item.dataset.chatId, item.dataset.peerId));
+            });
+        }
+
+        document.getElementById('searchInput').addEventListener('input', e => renderChatList(e.target.value));
+
+        // ============================================================================
+        // Chat Selection
+        // ============================================================================
+        async function selectChat(chatId, peerId) {
+            currentChatId = chatId;
+            currentChatPeerId = peerId;
+            document.querySelectorAll('.chat-item').forEach(el => el.classList.toggle('active', el.dataset.chatId === chatId));
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('chatView').classList.remove('hidden');
+            renderChatHeader(chatId);
+            await loadMessages(peerId);
+        }
+
+        function renderChatHeader(chatId) {
+            const chat = dialogs.find(d => d.id == chatId);
+            if (!chat) return;
+            document.getElementById('chatName').textContent = chat.title;
+            document.getElementById('chatStatus').textContent = chat.type === 'channel' ? 'Channel' : chat.type === 'group' ? 'Group' : '';
+            const avatar = document.getElementById('chatAvatar');
+            const initials = getInitials(chat.title);
+            const color = getColorFromString(chat.title);
+            if (chat.photo?.photo_small) {
+                avatar.innerHTML = `<img src="${chat.photo.photo_small}" alt="">`;
+            } else {
+                avatar.textContent = initials;
+                avatar.style.background = color;
+            }
+        }
+
+        // ============================================================================
+        // Messages
+        // ============================================================================
+        async function loadMessages(peerId) {
+            try {
+                const area = document.getElementById('messagesArea');
+                area.innerHTML = `
+                    <div class="message incoming animate-fade-in">
+                        <div class="message-avatar skeleton skeleton-avatar"></div>
+                        <div class="message-bubble">
+                            <div class="skeleton skeleton-text short"></div>
+                            <div class="skeleton skeleton-text medium"></div>
+                        </div>
+                    </div>
+                    <div class="message incoming animate-fade-in" style="animation-delay: 100ms;">
+                        <div class="message-avatar skeleton skeleton-avatar"></div>
+                        <div class="message-bubble">
+                            <div class="skeleton skeleton-text medium"></div>
+                        </div>
+                    </div>
+                `;
+                if (!invoke) throw new Error('Tauri API not initialized');
+                const res = await invokeWithTimeout('get_messages', { peer_id: parseInt(peerId), limit: 100 });
+                renderMessages(res || []);
+            } catch (e) {
+                console.error('Load messages failed:', e);
+                document.getElementById('messagesArea').innerHTML = '';
+            }
+        }
+
+        function renderMessages(messages) {
+            const area = document.getElementById('messagesArea');
+            area.innerHTML = '';
+            messages.reverse().forEach((msg, index) => {
+                const el = createMessageElement(msg);
+                el.style.animationDelay = `${Math.min(index * 30, 300)}ms`;
+                area.appendChild(el);
+            });
+            scrollToBottom();
+        }
+
+        function createMessageElement(msg) {
+            const div = document.createElement('div');
+            const isOutgoing = msg.outgoing;
+            div.className = `message ${isOutgoing ? 'outgoing' : 'incoming'} animate-slide-up`;
+
+            const sender = msg.sender_id ? dialogs.find(d => d.id == msg.sender_id) || contacts.find(c => c.id == msg.sender_id) : null;
+            const senderName = sender ? (sender.first_name + (sender.last_name ? ' ' + sender.last_name : '')) : 'Unknown';
+            const senderInitials = getInitials(senderName);
+            const senderColor = getColorFromString(senderName);
+            const time = msg.date ? formatTime(msg.date * 1000) : '';
+            const avatarHtml = sender?.photo?.photo_small
+                ? `<img src="${sender.photo.photo_small}" alt="">`
+                : senderInitials;
+
+            let contentHtml = '';
+            if (msg.media) {
+                if (msg.media.type === 'photo' && msg.media.photo_url) {
+                    contentHtml += `<div class="message-media"><img src="${msg.media.photo_url}" alt="Photo" loading="lazy"></div>`;
+                } else if (msg.media.type === 'video' && msg.media.video_url) {
+                    contentHtml += `<div class="message-media"><video src="${msg.media.video_url}" controls></video></div>`;
+                } else if (msg.media.type === 'audio' && msg.media.audio_url) {
+                    contentHtml += `<div class="message-media"><audio src="${msg.media.audio_url}" controls></audio></div>`;
+                } else if (msg.media.type === 'document') {
+                    contentHtml += `
+                        <div class="message-file">
+                            <span class="message-file-icon">📄</span>
+                            <div class="message-file-info">
+                                <div class="message-file-name">${escapeHtml(msg.media.file_name || 'File')}</div>
+                                <div class="message-file-size">${formatBytes(msg.media.file_size || 0)}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            if (msg.text) {
+                contentHtml += `<div class="message-text">${linkify(msg.text)}</div>`;
+            }
+
+            div.innerHTML = `
+                ${!isOutgoing ? `<div class="message-avatar" style="background:${senderColor}">${avatarHtml}</div>` : ''}
+                <div class="message-bubble">
+                    ${!isOutgoing ? `<div class="message-sender">${escapeHtml(senderName)}</div>` : ''}
+                    ${contentHtml}
+                    <div class="message-time">${time}</div>
+                </div>
+                ${isOutgoing ? `<div class="message-avatar" style="background:${getColorFromString(myInfo?.first_name || 'me')}">${getInitials(myInfo?.first_name || 'me')}</div>` : ''}
+            `;
+            return div;
+        }
+
+        function formatBytes(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function scrollToBottom() {
+            const area = document.getElementById('messagesArea');
+            area.scrollTop = area.scrollHeight;
+        }
+
+        // Send message
+        document.getElementById('sendBtn').addEventListener('click', sendMessage);
+        document.getElementById('messageInput').addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+        });
+        document.getElementById('messageInput').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 150) + 'px';
+            document.getElementById('sendBtn').disabled = !this.value.trim() || !currentChatPeerId;
+        });
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            if (!text || !currentChatPeerId) return;
+            input.value = '';
+            input.style.height = 'auto';
+            document.getElementById('sendBtn').disabled = true;
+
+            try {
+                if (!invoke) throw new Error('Tauri API not initialized');
+                await invokeWithTimeout('send_message', { peer_id: parseInt(currentChatPeerId), text });
+                await loadMessages(currentChatPeerId);
+            } catch (e) {
+                console.error('Send failed:', e);
+            }
+        }
+
+        // ============================================================================
+        // New Chat Modal
+        // ============================================================================
+        document.getElementById('myAvatar')?.addEventListener('click', openNewChatModal);
+
+        function openNewChatModal() {
+            renderContacts('');
+            document.getElementById('newChatModal').classList.add('visible');
+            document.getElementById('contactSearch').focus();
+        }
+
+        function closeNewChatModal() {
+            document.getElementById('newChatModal').classList.remove('visible');
+        }
+
+        document.getElementById('newChatModal').addEventListener('click', e => {
+            if (e.target === e.currentTarget) closeNewChatModal();
+        });
+
+        document.getElementById('contactSearch').addEventListener('input', e => renderContacts(e.target.value));
+
+        function renderContacts(filter) {
+            const list = document.getElementById('contactList');
+            const filtered = contacts.filter(c =>
+                `${c.first_name} ${c.last_name || ''}`.toLowerCase().includes(filter.toLowerCase()) ||
+                (c.username && c.username.toLowerCase().includes(filter.toLowerCase()))
+            );
+            list.innerHTML = filtered.map((c, index) => {
+                const name = `${c.first_name} ${c.last_name || ''}`.trim();
+                const initials = getInitials(name);
+                const color = getColorFromString(name);
+                const avatarHtml = c.photo?.photo_small
+                    ? `<img src="${c.photo.photo_small}" alt="">`
+                    : initials;
+                const delay = Math.min(index * 20, 200);
+                return `
+                    <div class="contact-item" data-user-id="${c.id}" style="animation-delay: ${delay}ms;">
+                        <div class="contact-avatar" style="background:${color}">${avatarHtml}</div>
+                        <div>
+                            <div class="contact-name">${escapeHtml(name)}</div>
+                            ${c.username ? `<div class="contact-username">@${escapeHtml(c.username)}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            list.querySelectorAll('.contact-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const userId = item.dataset.userId;
+                    closeNewChatModal();
+                });
+            });
+        }
+
+        // ============================================================================
+        // Main Entry
+        // ============================================================================
+        async function main() {
+            if (localStorage.getItem('regNoticeDismissed') === 'true') {
+                document.getElementById('regNotice').classList.add('hidden');
+            }
+
+            setupPhoneInput();
+            updateTriggerDisplay(); // Initialize trigger display
+            populateCountryOptions('');
+
+            await initTauri();
+
+            if (!invoke) {
+                console.error('Tauri API not available - running in browser?');
+                document.getElementById('loginError').textContent = 'Tauri API not available. Please run via "cargo run" or the built executable.';
+                return;
+            }
+
+            await initApp();
+        }
+
+        main();
+    </script>
+</body>
+</html>

@@ -128,3 +128,22 @@ impl From<GrammersUser> for User {
         }
     }
 }
+
+/// Contact representation (for new chat modal)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Contact {
+    pub id: i64,
+    pub username: Option<String>,
+    pub first_name: String,
+    pub last_name: Option<String>,
+    pub is_bot: bool,
+    pub is_verified: bool,
+    pub photo: Option<Photo>,
+}
+
+/// Photo representation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Photo {
+    pub photo_small: Option<String>,
+    pub photo_big: Option<String>,
+}

@@ -4,6 +4,8 @@ members = [
     "telerust-core",
     "telerust-cli",
     "telerust-gui",
+    "telerust-gui-wry",
+    "telerust-gui-tauri/src-tauri",
 ]
 exclude = []
 

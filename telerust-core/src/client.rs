@@ -9,7 +9,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{info};
 
-use super::{Chat as AppChat, Message as AppMessage, TelegramClient, types::User as AppUser};
+use super::{Chat as AppChat, Message as AppMessage, TelegramClient, types::{User as AppUser, Contact as AppContact}};
 
 /// Convert PeerId to InputPeer for API calls using session to get access_hash
 async fn peer_id_to_input_peer(session: &Arc<SqliteSession>, peer_id: PeerId) -> Result<tl::enums::InputPeer> {
@@ -128,6 +128,47 @@ impl HighLevelClient {
         let client = self.inner.lock().await;
         let me = client.client().get_me().await?;
         Ok(me.into())
+    }
+
+    /// Get contacts list
+    pub async fn get_contacts(&self) -> Result<Vec<AppContact>> {
+        let client = self.inner.lock().await;
+
+        // Use raw TL API to get contacts
+        let contacts_result: tl::enums::contacts::Contacts = client.client()
+            .invoke(&tl::functions::contacts::GetContacts { hash: 0 })
+            .await?;
+
+        let mut contacts = Vec::new();
+
+        // Match on the Contacts enum
+        if let tl::enums::contacts::Contacts::Contacts(c) = contacts_result {
+            for user in c.users {
+                if let tl::enums::User::User(u) = user {
+                    let photo = u.photo.as_ref().map(|_p| {
+                        // UserProfilePhoto handling - try to extract photo info
+                        // The exact structure depends on grammers-tl-types version
+                        super::types::Photo { photo_small: None, photo_big: None }
+                    });
+
+                    // bot and verified are bool (flags in TL schema)
+                    let is_bot = u.bot;
+                    let is_verified = u.verified;
+
+                    contacts.push(AppContact {
+                        id: u.id,
+                        username: u.username,
+                        first_name: u.first_name.unwrap_or_default(),
+                        last_name: u.last_name,
+                        is_bot,
+                        is_verified,
+                        photo,
+                    });
+                }
+            }
+        }
+
+        Ok(contacts)
     }
 
     /// Search for a user by username
